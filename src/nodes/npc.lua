@@ -6,6 +6,7 @@ local sound = require 'vendor/TEsound'
 local fonts = require 'fonts'
 local utils = require 'utils'
 local Timer = require 'vendor/timer'
+local Emotion = require 'nodes/emotion'
 
 local Menu = {}
 Menu.__index = Menu
@@ -355,6 +356,8 @@ function NPC.new(node, collider)
                         npc,
                         menuColor)
 
+    npc.emotion = Emotion.new(npc)
+
     return npc
 end
 
@@ -369,6 +372,7 @@ function NPC:draw()
     local anim = self:animation()
     anim:draw(self.image, self.position.x + (self.direction=="left" and self.width or 0), self.position.y, 0, (self.direction=="left") and -1 or 1, 1)
     self.menu:draw(self.position.x, self.position.y - 50)
+    self.emotion:draw(self)
 
     if self.displayAffection then
         love.graphics.setColor( 0, 0, 255, 255 )
