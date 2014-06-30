@@ -6,6 +6,7 @@ local sound = require 'vendor/TEsound'
 local fonts = require 'fonts'
 local utils = require 'utils'
 local Timer = require 'vendor/timer'
+local Emotion = require 'nodes/emotion'
 
 local Menu = {}
 Menu.__index = Menu
@@ -355,6 +356,8 @@ function NPC.new(node, collider)
                         npc,
                         menuColor)
 
+    npc.emotion = Emotion.new(npc)
+
     return npc
 end
 
@@ -369,6 +372,7 @@ function NPC:draw()
     local anim = self:animation()
     anim:draw(self.image, self.position.x + (self.direction=="left" and self.width or 0), self.position.y, 0, (self.direction=="left") and -1 or 1, 1)
     self.menu:draw(self.position.x, self.position.y - 50)
+    self.emotion:draw(self)
 
     if self.displayAffection then
         love.graphics.setColor( 0, 0, 255, 255 )
@@ -547,9 +551,27 @@ function NPC:run(dt, player)
     elseif self.position.y < target_pos.y + self.original_pos.y - self.run_speed * dt / 2 then
         direction_y = 1
     end
+
+    -- Determine how fast to move on each axis
+    -- Useful for when NPCs travel diagonally
+    local target_pos_prev = {x=0, y=0}
+    if self.run_offsets_index > 1 then
+        target_pos_prev = self.run_offsets[self.run_offsets_index - 1]
+    end
+    local speed_fraction_x = 1
+    local speed_fraction_y = 1
+    local target_delta_x = math.abs(target_pos.x - target_pos_prev.x)
+    local target_delta_y = math.abs(target_pos.y - target_pos_prev.y)
+    if target_delta_y > 0 and target_delta_x > 0 then
+        if target_delta_y > target_delta_x then
+            speed_fraction_x = target_delta_x / target_delta_y / 2
+        else
+            speed_fraction_y = target_delta_y / target_delta_x
+        end
+    end
     
-    self.position.x = self.position.x + self.run_speed * dt * direction_x
-    self.position.y = self.position.y + self.run_speed * dt * direction_y / 2
+    self.position.x = self.position.x + (self.run_speed * speed_fraction_x) * dt * direction_x
+    self.position.y = self.position.y + (self.run_speed * speed_fraction_y) * dt * direction_y / 2
 end
 
 -- Checks for certain items in the players inventory

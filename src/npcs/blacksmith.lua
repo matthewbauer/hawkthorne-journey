@@ -17,7 +17,7 @@ return {
             'loop',{'1-4,1'},0.20,
         },
         talking = {
-            'loop',{'2,3','2,4'},0.20,
+            'loop',{'1,2','2,1','3,2','4,1'},0.20,
         },
         hurt = {
             'loop',{'1-4,5'}, 0.20,
@@ -38,11 +38,18 @@ return {
     },
     donotfacewhentalking = true,
     enter = function(npc, previous)
-        if npc.db:get('blacksmith-dead', false) then
+        local dead = npc.db:get('blacksmith-dead', false)
+        if dead ~= false then
             npc.dead = true
+            if type(dead) ~= "boolean" then
+                npc.position.x = dead.x
+                npc.position.y = dead.y
+                npc.direction = dead.direction
+            end
             npc.state = 'dying'
             -- Prevent the animation from playing
             npc:animation():pause()
+
             return
         end
         
@@ -115,8 +122,8 @@ return {
             -- The flames will kill the blacksmith if the player doesn't
             -- Add a bit of randomness so the blacksmith doesn't always fall in the same place
             Timer.add(5 + math.random(), function() npc.props.die(npc) end)
-            -- If the player leaves and re-enters, the blacksmith will be dead
-            npc.db:set('blacksmith-dead', true)
+            -- Save position and direction now before they leave the level
+            npc.db:set('blacksmith-dead', {x = npc.position.x, y = npc.position.y, direction = npc.direction})
         elseif npc.state == 'hurt' then
             npc.props.die(npc)
         end
@@ -139,19 +146,22 @@ return {
     die = function(npc, player)
         npc.dead = true
         npc.state = 'dying'
-               --this will spawn the blacksmith's wife but it's not ready yet
-                --[[local node = {
-                    type = 'npc',
-                    name = 'blacksmith_wife_fire',
-                    x = 155,
-                    y = 95,
-                    width = 48,
-                    height = 48,
-                    properties = {}
-                    }
-                local spawnedNode = NodeClass.new(node, npc.collider)
-                local level = Gamestate.currentState()
-                level:addNode(spawnedNode)--]]
-              
+        npc.db:set('blacksmith-dead', {x = npc.position.x, y = npc.position.y, direction = npc.direction})
+        
+        if Gamestate.currentState().name == "blacksmith" then
+            local node = {
+                type = 'npc',
+                name = 'blacksmith_wife',
+                x = 155,
+                y = 95,
+                width = 48,
+                height = 48,
+                properties = {}
+                }
+            local blacksmith_wife = NodeClass.new(node, npc.collider)
+            local level = Gamestate.currentState()
+            level:addNode(blacksmith_wife)
+            Timer.add(1.5, function() blacksmith_wife.props.panic(blacksmith_wife) end)
+        end
     end,
 }
